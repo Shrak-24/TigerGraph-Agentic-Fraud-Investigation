@@ -1,0 +1,19 @@
+{
+  "contract_version": "1.0.0",
+  "graph": "HHGOA_FRAUD",
+  "transport": "TigerGraph MCP",
+  "operations": [
+    {"name":"get_transaction_context","query":"get_transaction_context","input":{"tx_id":"string","max_hops":"integer, optional, 0-4"},"output":{"transactions":"array<Transaction>","accounts":"array<Account>"}},
+    {"name":"find_connected_accounts","query":"find_connected_accounts","input":{"account_id":"string","max_hops":"integer, optional, 1-3"},"output":{"accounts":"array<Account>","shared_devices":"array<string>","shared_identities":"array<string>"}},
+    {"name":"detect_mule_rings","query":"detect_mule_rings","input":{"account_id":"string","min_shared_devices":"integer, optional","min_ring_size":"integer, optional"},"output":{"accounts":"array<Account>","devices":"array<string>","members":"array<string>"}},
+    {"name":"link_device_identity","query":"link_device_identity","input":{"device_id":"string"},"output":{"accounts":"array<Account>","identities":"array<Identity>"}},
+    {"name":"find_prior_cases","query":"find_prior_cases","input":{"account_id":"string","limit":"integer, optional, 1-100"},"output":{"cases":"array<PriorCase>"}}
+  ],
+  "entities": {
+    "Account": ["account_id","customer_id","status","country","risk_score","attributes"],
+    "Transaction": ["transaction_id","event_time","amount","currency","is_online","model_risk_score","merchant_id","merchant_category","country","raw_features"],
+    "Identity": ["identity_id","identity_type","normalized_value","attributes"],
+    "PriorCase": ["case_id","opened_at","closed_at","outcome","fraud_type","risk_level","summary","attributes"]
+  },
+  "errors": ["INVALID_ARGUMENT","NOT_FOUND","QUERY_TIMEOUT","GRAPH_UNAVAILABLE"]
+}

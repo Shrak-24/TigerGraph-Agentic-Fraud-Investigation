@@ -1,0 +1,47 @@
+// HHGOA fraud investigation graph.
+// Replace the FILE paths in the loading jobs with Savanna file-store URIs or CE paths.
+
+USE GLOBAL
+
+CREATE VERTEX Account (PRIMARY_ID account_id STRING, customer_id STRING, first_seen DATETIME, last_seen DATETIME, status STRING, country STRING, risk_score FLOAT, attributes JSON) WITH primary_id_as_attribute="true"
+CREATE VERTEX Customer (PRIMARY_ID customer_id STRING, first_seen DATETIME, last_seen DATETIME, attributes JSON) WITH primary_id_as_attribute="true"
+CREATE VERTEX Transaction (PRIMARY_ID transaction_id STRING, event_time DATETIME, amount FLOAT, currency STRING, is_online BOOL, model_risk_score FLOAT, merchant_id STRING, merchant_category STRING, country STRING, raw_features JSON) WITH primary_id_as_attribute="true"
+CREATE VERTEX Device (PRIMARY_ID device_id STRING, first_seen DATETIME, last_seen DATETIME, device_type STRING, attributes JSON) WITH primary_id_as_attribute="true"
+CREATE VERTEX Identity (PRIMARY_ID identity_id STRING, identity_type STRING, normalized_value STRING, attributes JSON) WITH primary_id_as_attribute="true"
+CREATE VERTEX PriorCase (PRIMARY_ID case_id STRING, opened_at DATETIME, closed_at DATETIME, outcome STRING, fraud_type STRING, risk_level STRING, summary STRING, attributes JSON) WITH primary_id_as_attribute="true"
+
+CREATE DIRECTED EDGE OWNS (FROM Customer, TO Account, first_seen DATETIME, last_seen DATETIME)
+CREATE DIRECTED EDGE MADE (FROM Account, TO Transaction, event_time DATETIME, amount FLOAT)
+CREATE DIRECTED EDGE USES_DEVICE (FROM Transaction, TO Device, event_time DATETIME)
+CREATE DIRECTED EDGE ACCOUNT_USES_DEVICE (FROM Account, TO Device, first_seen DATETIME, last_seen DATETIME, transaction_count UINT)
+CREATE DIRECTED EDGE HAS_IDENTITY (FROM Account, TO Identity, identity_type STRING, first_seen DATETIME, last_seen DATETIME)
+CREATE DIRECTED EDGE TRANSFERS_TO (FROM Transaction, TO Account, amount FLOAT, event_time DATETIME)
+CREATE DIRECTED EDGE IN_CASE (FROM Account, TO PriorCase, role STRING)
+CREATE DIRECTED EDGE TRANSACTION_IN_CASE (FROM Transaction, TO PriorCase, evidence_type STRING)
+CREATE DIRECTED EDGE SIMILAR_CASE (FROM PriorCase, TO PriorCase, similarity FLOAT, reason STRING)
+
+CREATE GRAPH HHGOA_FRAUD (Account, Customer, Transaction, Device, Identity, PriorCase, OWNS, MADE, USES_DEVICE, ACCOUNT_USES_DEVICE, HAS_IDENTITY, TRANSFERS_TO, IN_CASE, TRANSACTION_IN_CASE, SIMILAR_CASE)
+
+CREATE LOADING JOB load_hhgoa FOR GRAPH HHGOA_FRAUD {
+  DEFINE FILENAME accounts_file;
+  DEFINE FILENAME customers_file;
+  DEFINE FILENAME transactions_file;
+  DEFINE FILENAME devices_file;
+  DEFINE FILENAME identities_file;
+  DEFINE FILENAME prior_cases_file;
+
+  LOAD accounts_file TO VERTEX Account VALUES ($"account_id", $"customer_id", $"first_seen", $"last_seen", $"status", $"country", $"risk_score", $"attributes") USING header="true", separator=",", ON_ERROR="CONTINUE";
+  LOAD customers_file TO VERTEX Customer VALUES ($"customer_id", $"first_seen", $"last_seen", $"attributes") USING header="true", separator=",", ON_ERROR="CONTINUE";
+  LOAD transactions_file TO VERTEX Transaction VALUES ($"transaction_id", $"event_time", $"amount", $"currency", $"is_online", $"model_risk_score", $"merchant_id", $"merchant_category", $"country", $"raw_features") USING header="true", separator=",", ON_ERROR="CONTINUE";
+  LOAD devices_file TO VERTEX Device VALUES ($"device_id", $"first_seen", $"last_seen", $"device_type", $"attributes") USING header="true", separator=",", ON_ERROR="CONTINUE";
+  LOAD identities_file TO VERTEX Identity VALUES ($"identity_id", $"identity_type", $"normalized_value", $"attributes") USING header="true", separator=",", ON_ERROR="CONTINUE";
+  LOAD prior_cases_file TO VERTEX PriorCase VALUES ($"case_id", $"opened_at", $"closed_at", $"outcome", $"fraud_type", $"risk_level", $"summary", $"attributes") USING header="true", separator=",", ON_ERROR="CONTINUE";
+
+  LOAD accounts_file TO EDGE OWNS VALUES ($"customer_id", $"account_id", $"first_seen", $"last_seen") USING header="true", separator=",", ON_ERROR="CONTINUE";
+  LOAD transactions_file TO EDGE MADE VALUES ($"account_id", $"transaction_id", $"event_time", $"amount") USING header="true", separator=",", ON_ERROR="CONTINUE";
+  LOAD transactions_file TO EDGE USES_DEVICE VALUES ($"transaction_id", $"device_id", $"event_time") USING header="true", separator=",", ON_ERROR="CONTINUE";
+  LOAD accounts_file TO EDGE ACCOUNT_USES_DEVICE VALUES ($"account_id", $"device_id", $"first_seen", $"last_seen", $"transaction_count") USING header="true", separator=",", ON_ERROR="CONTINUE";
+  LOAD accounts_file TO EDGE HAS_IDENTITY VALUES ($"account_id", $"identity_id", $"identity_type", $"first_seen", $"last_seen") USING header="true", separator=",", ON_ERROR="CONTINUE";
+  LOAD prior_cases_file TO EDGE IN_CASE VALUES ($"account_id", $"case_id", $"role") USING header="true", separator=",", ON_ERROR="CONTINUE";
+  LOAD prior_cases_file TO EDGE TRANSACTION_IN_CASE VALUES ($"transaction_id", $"case_id", $"evidence_type") USING header="true", separator=",", ON_ERROR="CONTINUE";
+}

@@ -1,0 +1,55 @@
+USE GLOBAL
+
+CREATE QUERY get_transaction_context(STRING tx_id, UINT max_hops = 2) FOR GRAPH HHGOA_FRAUD SYNTAX v2 {
+  Start = {Transaction.*};
+  Target = SELECT t FROM Start:s -(MADE>)- Account:a -(OWNS>)- Customer:c
+           WHERE s.transaction_id == tx_id;
+  Result = SELECT s FROM Start:s WHERE s.transaction_id == tx_id;
+  PRINT Result[transaction_id, event_time, amount, currency, model_risk_score, merchant_id, merchant_category, country, raw_features];
+  PRINT Target[account_id, customer_id];
+}
+
+CREATE QUERY find_connected_accounts(STRING account_id, UINT max_hops = 2) FOR GRAPH HHGOA_FRAUD SYNTAX v2 {
+  SetAccum<STRING> shared_devices;
+  SetAccum<STRING> shared_identities;
+  Start = {Account.*};
+  Connected = SELECT other FROM Start:a -(ACCOUNT_USES_DEVICE>)- Device:d -(<ACCOUNT_USES_DEVICE)- other:other
+              WHERE a.account_id == account_id AND other != a
+              ACCUM shared_devices += d.device_id;
+  Connected = SELECT other FROM Connected:other -(HAS_IDENTITY>)- Identity:i -(<HAS_IDENTITY)- a:anchor
+              WHERE anchor.account_id == account_id
+              ACCUM shared_identities += i.identity_id;
+  PRINT Connected[account_id, customer_id, status, country, risk_score, attributes];
+  PRINT shared_devices;
+  PRINT shared_identities;
+}
+
+CREATE QUERY detect_mule_rings(STRING account_id, UINT min_shared_devices = 1, UINT min_ring_size = 3) FOR GRAPH HHGOA_FRAUD SYNTAX v2 {
+  SetAccum<STRING> devices;
+  SetAccum<STRING> members;
+  Start = {Account.*};
+  Neighbors = SELECT other FROM Start:a -(ACCOUNT_USES_DEVICE>)- Device:d -(<ACCOUNT_USES_DEVICE)- other:other
+              WHERE a.account_id == account_id AND other != a
+              ACCUM devices += d.device_id, members += other.account_id;
+  Ring = SELECT other FROM Neighbors:other -(ACCOUNT_USES_DEVICE>)- Device:d -(<ACCOUNT_USES_DEVICE)- peer:peer
+         WHERE peer IN Neighbors AND other != peer
+         ACCUM members += peer.account_id;
+  PRINT Ring[account_id, customer_id, risk_score, status, attributes];
+  PRINT devices;
+  PRINT members;
+}
+
+CREATE QUERY link_device_identity(STRING device_id) FOR GRAPH HHGOA_FRAUD SYNTAX v2 {
+  Accounts = {Device.*};
+  Linked = SELECT a FROM Accounts:d -(<ACCOUNT_USES_DEVICE)- a:Account
+           WHERE d.device_id == device_id;
+  PRINT Linked[account_id, customer_id, status, country, risk_score, attributes];
+  PRINT SELECT i FROM Linked:a -(HAS_IDENTITY>)- i:Identity;
+}
+
+CREATE QUERY find_prior_cases(STRING account_id, UINT limit = 20) FOR GRAPH HHGOA_FRAUD SYNTAX v2 {
+  Cases = SELECT c FROM {Account.*}:a -(IN_CASE>)- c:PriorCase
+          WHERE a.account_id == account_id
+          ORDER BY c.opened_at DESC LIMIT limit;
+  PRINT Cases[case_id, opened_at, closed_at, outcome, fraud_type, risk_level, summary, attributes];
+}
