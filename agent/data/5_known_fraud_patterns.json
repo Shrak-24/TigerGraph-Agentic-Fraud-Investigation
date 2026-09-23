@@ -1,0 +1,9 @@
+{
+  "patterns": [
+    {"pattern_id": "account_takeover", "name": "Account takeover", "indicators": ["new_device", "new_location", "rapid_transactions", "failed_authentication"], "typical_entities": ["account", "device", "identity"], "base_confidence": 0.78},
+    {"pattern_id": "mule_ring", "name": "Potential mule ring", "indicators": ["shared_device", "shared_email", "multiple_connected_accounts", "rapid_transactions"], "typical_entities": ["account", "device", "beneficiary"], "base_confidence": 0.82},
+    {"pattern_id": "friendly_fraud", "name": "Friendly fraud", "indicators": ["customer_dispute", "recognized_device", "merchant_delivery_confirmed"], "typical_entities": ["customer", "transaction", "merchant"], "base_confidence": 0.62},
+    {"pattern_id": "synthetic_identity", "name": "Synthetic identity", "indicators": ["identity_mismatch", "thin_file", "shared_identity", "new_account"], "typical_entities": ["identity", "account"], "base_confidence": 0.74},
+    {"pattern_id": "card_testing", "name": "Card testing", "indicators": ["many_small_transactions", "rapid_transactions", "multiple_merchants", "declines"], "typical_entities": ["transaction", "merchant", "device"], "base_confidence": 0.71}
+  ]
+}

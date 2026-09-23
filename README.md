@@ -14,6 +14,18 @@ This repository contains the graph/data workstream for the TigerGraph Agentic Fr
 - `pipeline/run_benchmark.py` - dummy 20-case benchmark pipeline; replace its stub with the real agent call during integration.
 - `docs/TECHNICAL_BLOG_OUTLINE.md` and `docs/DEMO_VIDEO_STORYBOARD.md` - Person 3 content scaffolds.
 - `frontend/trace_fraud_ui/` - merged TRACE. Streamlit workbench and standalone HTML preview from the Desktop UI folder.
+- `agent/` - Person 2's evidence-first fraud investigation loop, mock graph tools, GraphRAG policy/pattern grounding, and case memory.
+- `TOOL_INTERFACE.md` and `CASE_RECORD_SCHEMA.json` - shared contracts for the agent, TigerGraph MCP adapter, and UI.
+
+## Local agent smoke test
+
+The agent currently runs without TigerGraph credentials using deterministic mock data:
+
+```powershell
+python -m agent.demo
+```
+
+Use `FraudInvestigationAgent(graph_tools=<Person 1 adapter>)` to replace the mock layer. The optional `policy_path` can point to the supplied `fraud_policy.pdf`; the loader uses `pypdf` when available. The local JSON policy and five-pattern catalog are explicit demo fallbacks because those source artifacts are not present in this checkout.
 
 ## Local UI
 

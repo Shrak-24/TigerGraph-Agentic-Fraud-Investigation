@@ -1,0 +1,8 @@
+{
+  "source": "agent/data/fraud_policy.json",
+  "note": "Local demo fallback. Replace with the hackathon fraud_policy.pdf when it is supplied.",
+  "transaction_limits_by_risk": {"low": 10000, "medium": 5000, "high": 1000},
+  "approval_thresholds": {"block_transaction": 0.8, "block_account": 0.9, "sar": 0.9},
+  "sar_rules": {"minimum_risk_score": 0.9, "requires_human_approval": true, "requires_transaction_and_identity_evidence": true},
+  "acceptable_evidence_types": ["transaction", "device_signal", "connected_account", "prior_case", "customer_validation", "policy_grounding", "pattern_grounding"]
+}
