@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TRACE. — Fraud Investigation Workbench</title>
+<style>
+:root{--bg:#090909;--panel:#111;--line:#292929;--text:#f1eee7;--muted:#9b9892;--accent:#ef4b36}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}
+.shell{min-height:100vh;display:grid;grid-template-columns:245px 1fr}.side{border-right:1px solid var(--line);padding:28px 18px;height:100vh;position:sticky;top:0;background:#0c0c0c;display:flex;flex-direction:column}
+.brand{font-size:23px;font-weight:800;letter-spacing:-.07em}.brand i{font-style:normal;color:var(--accent)}.kicker{font-size:9px;letter-spacing:.25em;color:#6f6f6f;text-transform:uppercase;margin-top:6px}
+.rule{height:1px;background:var(--line);margin:25px 0}.label{font-size:9px;letter-spacing:.18em;color:#6f6f6f;text-transform:uppercase}
+.case-list{margin-top:11px;display:grid;gap:5px;overflow:auto}.case{padding:10px;border:1px solid transparent;border-radius:4px;cursor:pointer;color:#aaa;background:transparent}.case:hover{border-color:#333;background:#151515}.case.active{background:#181818;border-color:#393939;color:#fff}.case b{font-size:11px}.case small{display:block;margin-top:4px;font-size:9px;color:#6d6d6d}
+.sidefoot{margin-top:auto;font-size:9px;line-height:1.6;color:#5e5e5e}
+.main{padding:28px 42px 50px;max-width:1500px;width:100%;margin:auto}.nav{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:16px}.nav span{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#aaa}.nav .right{color:#666}
+.hero{display:grid;grid-template-columns:1.3fr .7fr;gap:50px;padding:42px 0 30px;border-bottom:1px solid var(--line)}
+.overline{font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:#999}.overline:before{content:"";display:inline-block;width:40px;height:1px;background:var(--accent);vertical-align:middle;margin-right:10px}
+h1{font-size:clamp(58px,7vw,108px);line-height:.84;letter-spacing:-.075em;margin:17px 0 18px}.soft{color:#aaa59e}.desc{max-width:650px;color:#9b9892;line-height:1.65;font-size:12px}
+.metas{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-self:end}.meta{border-top:1px solid #303030;padding-top:9px}.meta label{display:block;color:#666;font-size:8px;letter-spacing:.17em;text-transform:uppercase}.meta strong{display:block;font-size:13px;margin-top:6px}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--line)}.metric{padding:16px 16px 16px 0;border-right:1px solid var(--line);margin-right:16px}.metric:last-child{border-right:0}.metric small{display:block;color:#666;font-size:8px;letter-spacing:.17em;text-transform:uppercase}.metric b{display:block;font-size:18px;margin-top:7px}
+.grid{display:grid;grid-template-columns:1.25fr .75fr;gap:28px;padding-top:27px}.section{margin-bottom:28px}.head{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:13px}.head b{font-size:10px;letter-spacing:.15em;text-transform:uppercase}.head span{font-size:9px;color:#666}
+.entities{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.entity,.box{border:1px solid #292929;background:#101010;padding:13px}.entity{min-height:78px}.entity small{font-size:8px;color:#666;letter-spacing:.16em;text-transform:uppercase}.entity b{display:block;font-size:12px;margin:7px 0 4px}.entity span{font-size:9px;color:#777}
+.timeline{border-left:1px solid #3a3a3a;margin-left:8px;padding-left:16px}.event{padding:0 0 18px;position:relative}.event:before{content:"";position:absolute;left:-20px;top:4px;width:6px;height:6px;border:1px solid #777;background:#090909}.event.add:before{background:var(--accent);border-color:var(--accent)}.event small{font-size:8px;letter-spacing:.08em;color:#666;text-transform:uppercase}.event b{font-size:12px}.event p{font-size:10px;line-height:1.55;color:#999;margin:5px 0 0}
+.assessment{display:grid;grid-template-columns:1fr 1fr;gap:25px}.big{font-size:45px;font-weight:800;letter-spacing:-.07em}.bar{height:4px;background:#242424;margin:11px 0}.bar i{height:100%;display:block;background:var(--accent)}.reason{font-size:10px;line-height:1.6;color:#999}
+.memory,.action{border:1px solid #292929;background:#101010;padding:13px;margin-bottom:9px}.row{display:flex;justify-content:space-between;gap:10px}.row b{font-size:11px}.badge{font-size:8px;border:1px solid #3c3c3c;border-radius:999px;padding:4px 7px;color:#aaa}.memory p,.action p{font-size:10px;line-height:1.5;color:#999;margin:8px 0 0}.action.after{background:#141110;border-color:#4a3530}.action.after b{color:#fff}
+details{border-top:1px solid #292929;padding:11px 0;color:#aaa;font-size:10px}details:first-child{border-top:0}summary{cursor:pointer;color:#ddd}
+.sar{border:1px solid #3a2724;background:#120e0e;padding:13px}.sar label{font-size:8px;letter-spacing:.17em;color:#df6b59;text-transform:uppercase}.sar textarea{width:100%;margin-top:10px;background:#0a0a0a;color:#ccc;border:1px solid #2b2b2b;padding:10px;min-height:95px}
+.progress{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line)}.step{padding:14px 13px 0 0;border-right:1px solid var(--line);margin-right:13px}.step:last-child{border-right:0}.step small{font-size:8px;color:#666;letter-spacing:.17em;text-transform:uppercase}.step b{display:block;font-size:11px;margin-top:6px}.step p{font-size:9px;color:#777;line-height:1.5}
+@media(max-width:1000px){.shell{grid-template-columns:1fr}.side{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}.case-list{display:flex;overflow:auto}.case{min-width:140px}.hero,.grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.entities{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="side">
+  <div class="brand">TRACE<i>.</i></div><div class="kicker">Fraud intelligence</div><div class="rule"></div>
+  <div class="label">Benchmark cases</div><div class="case-list" id="cases"></div>
+  <div class="sidefoot">OFFLINE DEMO<br>Evidence-first • Human approval</div>
+</aside>
+<main class="main">
+  <div class="nav"><span>Workbench &nbsp;&nbsp; Evidence &nbsp;&nbsp; Case Memory &nbsp;&nbsp; Reports</span><span class="right">20 cases</span></div>
+  <section class="hero">
+    <div><div class="overline">Case <b id="caseid">FRD-2026-001</b></div><h1>FRAUD<br><span class="soft">INVESTIGATION.</span></h1><div class="desc">An evidence-first workspace showing how a case moves from an initial signal through targeted evidence gathering, uncertainty reduction and a human-approved next action.</div></div>
+    <div class="metas">
+      <div class="meta"><label>Status</label><strong id="status">Investigating</strong></div><div class="meta"><label>Trigger</label><strong id="trigger">Fraud signal</strong></div>
+      <div class="meta"><label>Pattern</label><strong id="pattern">Account takeover</strong></div><div class="meta"><label>Updated</label><strong>18 Sep 2026 • 11:15</strong></div>
+    </div>
+  </section>
+  <section class="metrics">
+    <div class="metric"><small>Bank risk</small><b id="bank">78 / 100</b></div><div class="metric"><small>Agent assessment</small><b id="agent">88 / 100</b></div><div class="metric"><small>Confidence</small><b id="conf">88%</b></div><div class="metric"><small>Connected entities</small><b>5</b></div><div class="metric"><small>Case age</small><b>03h 42m</b></div>
+  </section>
+  <div class="grid">
+    <div>
+      <section class="section"><div class="head"><b>01 / Entities involved</b><span>Relationship summary</span></div><div class="entities">
+        <div class="entity"><small>Customer</small><b id="customer">Customer 01</b><span>Primary account holder</span></div><div class="entity"><small>Account</small><b id="account">ACCT-100001</b><span>Primary account</span></div><div class="entity"><small>Device</small><b>DEV-7F9A</b><span>New device fingerprint</span></div>
+        <div class="entity"><small>Account</small><b>ACCT-100007</b><span>Shared beneficiary</span></div><div class="entity"><small>Account</small><b>ACCT-100014</b><span>Shared device attribute</span></div><div class="entity"><small>Transaction</small><b>TX-84A91</b><span>Disputed activity</span></div>
+      </div></section>
+      <section class="section"><div class="head"><b>02 / Evidence timeline</b><span>Initial → additional</span></div><div class="timeline">
+        <div class="event"><small>Initial • 09:16 • Transaction history</small><br><b>Velocity anomaly detected</b><p>6 transactions within 11 minutes; 4 involved a newly observed beneficiary.</p></div>
+        <div class="event"><small>Initial • 09:19 • Device signals</small><br><b>New device fingerprint</b><p>Login from a new device; prior device was last seen 31 days earlier.</p></div>
+        <div class="event"><small>Initial • 09:22 • Graph traversal</small><br><b>Connected-account overlap</b><p>Primary account links to 2 previously reviewed accounts through device / beneficiary attributes.</p></div>
+        <div class="event add"><small>Additional • 09:35 • Prior cases</small><br><b>Case-memory match</b><p>Two similar cases were confirmed as fraud after targeted customer verification.</p></div>
+        <div class="event add"><small>Additional • 09:42 • Customer verification</small><br><b>Activity confirmed unauthorized</b><p>Customer did not recognize the device session and disputed the observed activity.</p></div>
+      </div></section>
+      <section class="section"><div class="head"><b>03 / Fraud pattern & assessment</b><span>Explainable assessment</span></div><div class="assessment">
+        <div><div class="big" id="bigconf">88%</div><div class="bar"><i id="bar" style="width:88%"></i></div><div class="reason" id="reason">Correlated transaction, device and relationship signals align with an account-takeover pattern.</div></div>
+        <div><div class="meta"><label>Uncertainty</label><strong id="unc">Medium</strong></div><div class="meta" style="margin-top:16px"><label>Pattern class</label><strong id="pattern2">Account takeover</strong></div></div>
+      </div></section>
+      <section class="section"><div class="head"><b>04 / Case progression</b><span>Decision trail</span></div><div class="progress">
+        <div class="step"><small>Step 01</small><b>Signal detected</b><p>Initial evidence creates uncertainty.</p></div><div class="step"><small>Step 02</small><b>Evidence requested</b><p>Target the missing evidence.</p></div><div class="step"><small>Step 03</small><b>Assessment updated</b><p>Confidence changes with evidence.</p></div><div class="step"><small>Step 04</small><b>Human decision</b><p>Consequential action stays controlled.</p></div>
+      </div></section>
+    </div>
+    <div>
+      <section class="section"><div class="head"><b>05 / Case memory</b><span>Similar past cases</span></div>
+        <div class="memory"><div class="row"><b>FRD-2026-004 • Account takeover</b><span class="badge">Confirmed fraud</span></div><p>Customer verification + device evidence supported temporary account controls.</p></div>
+        <div class="memory"><div class="row"><b>FRD-2026-008 • Account takeover</b><span class="badge">False positive</span></div><p>Travel / legitimate device change explained the anomaly; transaction was released.</p></div>
+        <div class="memory"><div class="row"><b>FRD-2026-012 • Related pattern</b><span class="badge">Escalated</span></div><p>Multiple linked accounts required broader evidence collection and human review.</p></div>
+      </section>
+      <section class="section"><div class="head"><b>06 / Next best action</b><span>Before → after evidence</span></div>
+        <div class="action"><b>Before additional evidence</b><div class="reason">Pending human approval</div><p>Monitor account + request customer/device evidence.</p></div>
+        <div class="action after"><b>After additional evidence</b><div class="reason">Recommended — not auto-executed</div><p>Escalate case + place temporary transaction hold.</p></div>
+      </section>
+      <section class="section"><div class="head"><b>07 / Explainability</b><span>Why this decision</span></div><div class="box">
+        <details open><summary>What evidence was used?</summary><p>Transaction velocity, device novelty, graph links, prior-case similarity and customer verification.</p></details>
+        <details><summary>Why was more evidence requested?</summary><p>Initial signals were suspicious but could also occur during legitimate travel or device changes.</p></details>
+        <details><summary>Why this action over alternatives?</summary><p>New evidence reduces uncertainty while consequential controls remain under analyst approval.</p></details>
+      </div></section>
+      <section class="section"><div class="head"><b>08 / SAR preview</b><span>Policy dependent</span></div><div class="sar"><label>Generated report snippet</label><textarea readonly id="sar">Case FRD-2026-001: suspected account takeover. Activity is supported by transaction, device, graph and prior-case evidence. Analyst review is required before filing.</textarea></div></section>
+    </div>
+  </div>
+</main>
+</div>
+<script>
+const data=Array.from({length:20},(_,i)=>{const p=["Account takeover","Card / transaction fraud","Identity fraud","Payment fraud","Synthetic / emerging pattern"][i%5];const s=["Open","Investigating","Evidence requested","Resolved","Escalated"][i%5];const b=[78,65,83,91,58][i%5],a=[88,77,86,94,63][i%5],c=[88,81,74,91,63][i%5];return{id:`FRD-2026-${String(i+1).padStart(3,"0")}`,customer:`Customer ${String(i+1).padStart(2,"0")}`,account:`ACCT-${100001+i}`,pattern:p,status:s,bank:b,agent:a,conf:c,trigger:["Fraud signal","Customer report","Analyst request"][i%3]};});
+const list=document.getElementById("cases");
+function paint(active){list.innerHTML=data.map(c=>`<div class="case ${c.id===active?"active":""}" onclick="pick('${c.id}')"><b>${c.id}</b><small>${c.pattern}</small></div>`).join("")}
+function pick(id){const c=data.find(x=>x.id===id);document.getElementById("caseid").textContent=c.id;document.getElementById("status").textContent=c.status;document.getElementById("trigger").textContent=c.trigger;document.getElementById("pattern").textContent=c.pattern;document.getElementById("pattern2").textContent=c.pattern;document.getElementById("customer").textContent=c.customer;document.getElementById("account").textContent=c.account;document.getElementById("bank").textContent=`${c.bank} / 100`;document.getElementById("agent").textContent=`${c.agent} / 100`;document.getElementById("conf").textContent=`${c.conf}%`;document.getElementById("bigconf").textContent=`${c.conf}%`;document.getElementById("bar").style.width=`${c.conf}%`;document.getElementById("unc").textContent=c.conf>=88?"Low":c.conf>=72?"Medium":"High";document.getElementById("reason").textContent=`Correlated transaction, device and relationship signals align with a ${c.pattern.toLowerCase()} pattern; additional evidence is used to reduce ambiguity before consequential action.`;document.getElementById("sar").value=`Case ${c.id}: suspected ${c.pattern.toLowerCase()}. Activity is supported by transaction, device, graph and prior-case evidence. Analyst review is required before filing.`;paint(c.id)}
+paint(data[0].id);
+</script>
+</body></html>

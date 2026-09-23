@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HHGOA Fraud Investigation Demo</title>
+  <style>
+    :root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#172033;background:#f4f7fb}body{margin:0}.top{background:#132238;color:#fff;padding:22px 6vw}.top h1{margin:0 0 6px;font-size:24px}.top p{margin:0;color:#b9c7d9}.wrap{max-width:1150px;margin:26px auto;padding:0 20px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:#fff;border:1px solid #dce4ee;border-radius:12px;padding:18px;box-shadow:0 4px 14px #18345b0d}.label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#728198}.value{font-size:25px;font-weight:700;margin-top:7px}.risk{color:#d95745}.section{margin-top:18px}.section h2{font-size:18px}.evidence{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.pill{display:inline-block;border-radius:999px;padding:5px 10px;font-size:12px;background:#fff0d7;color:#8a5a00}.row{display:flex;justify-content:space-between;gap:12px;border-top:1px solid #e8edf3;padding:12px 0}.muted{color:#68778c;font-size:14px}.action{border-left:4px solid #e4a52c;padding-left:14px}.footer{color:#728198;font-size:12px;margin:24px 0}
+    @media(max-width:800px){.grid,.evidence{grid-template-columns:1fr 1fr}}@media(max-width:520px){.grid,.evidence{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header class="top"><h1>HHGOA Fraud Investigation</h1><p>Local demo dashboard · sample case record</p></header>
+  <main class="wrap">
+    <div class="grid">
+      <div class="card"><div class="label">Case</div><div class="value" id="caseId">-</div></div>
+      <div class="card"><div class="label">Status</div><div class="value" id="status">-</div></div>
+      <div class="card"><div class="label">Risk score</div><div class="value risk" id="risk">-</div></div>
+      <div class="card"><div class="label">Confidence</div><div class="value" id="confidence">-</div></div>
+    </div>
+    <section class="section card"><div class="label">Subject</div><div class="row"><strong id="account">-</strong><span class="muted" id="customer">-</span></div><div class="muted" id="trigger">-</div></section>
+    <section class="section"><h2>Evidence</h2><div class="evidence" id="evidence"></div></section>
+    <section class="section card"><h2>Finding</h2><div id="finding"></div></section>
+    <section class="section card"><h2>Next-best action</h2><div class="action"><strong id="action">-</strong><p class="muted" id="reason">-</p><span class="pill" id="approval">-</span></div></section>
+    <p class="footer">This is a local-only visualization of fixtures/sample-case.json. It is not connected to TigerGraph or the agent yet.</p>
+  </main>
+  <script>
+    fetch('../fixtures/sample-case.json').then(r=>r.json()).then(c=>{
+      document.querySelector('#caseId').textContent=c.case_id;
+      document.querySelector('#status').textContent=c.status.replace('_',' ');
+      document.querySelector('#risk').textContent=Math.round(c.uncertainty.risk_score*100)+'%';
+      document.querySelector('#confidence').textContent=Math.round(c.uncertainty.confidence*100)+'%';
+      document.querySelector('#account').textContent=c.subject.account_id;
+      document.querySelector('#customer').textContent=c.subject.customer_id+' · '+c.subject.country;
+      document.querySelector('#trigger').textContent=c.trigger.type+' from '+c.trigger.source+' · '+c.trigger.transaction_ids.join(', ');
+      document.querySelector('#evidence').innerHTML=c.evidence.map(e=>`<div class="card"><span class="pill">${e.type}</span><h3>${e.source}</h3><p>${e.summary}</p><div class="muted">Confidence: ${Math.round(e.confidence*100)}%</div></div>`).join('');
+      document.querySelector('#finding').innerHTML=`<strong>${c.findings[0].pattern}</strong><p>${c.findings[0].assessment}</p><div class="muted">Finding confidence: ${Math.round(c.findings[0].confidence*100)}%</div>`;
+      const a=c.actions[0]; document.querySelector('#action').textContent=a.action.replaceAll('_',' '); document.querySelector('#reason').textContent=a.reason; document.querySelector('#approval').textContent=a.status.replaceAll('_',' ')+' · '+a.approval_route;
+    }).catch(e=>document.querySelector('.wrap').innerHTML='<div class="card">Start the server from the repository root so the sample case can be loaded.</div>');
+  </script>
+</body>
+</html>

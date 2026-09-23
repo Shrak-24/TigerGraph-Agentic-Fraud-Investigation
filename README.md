@@ -13,6 +13,19 @@ This repository contains the graph/data workstream for the TigerGraph Agentic Fr
 - `fixtures/sample-case.json` - frontend/integration-safe sample case object.
 - `pipeline/run_benchmark.py` - dummy 20-case benchmark pipeline; replace its stub with the real agent call during integration.
 - `docs/TECHNICAL_BLOG_OUTLINE.md` and `docs/DEMO_VIDEO_STORYBOARD.md` - Person 3 content scaffolds.
+- `frontend/trace_fraud_ui/` - merged TRACE. Streamlit workbench and standalone HTML preview from the Desktop UI folder.
+
+## Local UI
+
+For the standalone preview, open `frontend/trace_fraud_ui/ui_preview.html` directly in a browser. For the interactive Streamlit workbench:
+
+```powershell
+cd frontend/trace_fraud_ui
+py -m pip install -r requirements.txt
+py -m streamlit run app.py
+```
+
+It runs at `http://localhost:8501` and currently uses synthetic benchmark data. The UI is intentionally kept separate from the graph backend until the MCP and case-record integration is connected.
 
 ## Prerequisites
 
