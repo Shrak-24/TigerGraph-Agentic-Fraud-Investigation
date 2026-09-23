@@ -1,0 +1,18 @@
+{
+  "case_id": "case-demo-001",
+  "benchmark_case_id": "benchmark-01",
+  "status": "needs_evidence",
+  "created_at": "2026-09-23T12:00:00Z",
+  "updated_at": "2026-09-23T12:02:00Z",
+  "trigger": {"type": "fraud_signal", "source": "bank_risk_model", "received_at": "2026-09-23T12:00:00Z", "risk_score": 0.87, "transaction_ids": ["tx-demo-001"]},
+  "subject": {"account_id": "acct-demo-001", "customer_id": "cust-demo-001", "country": "IN"},
+  "evidence": [{"evidence_id": "ev-001", "type": "transaction", "source": "tigergraph.get_transaction_context", "summary": "High-risk online transaction for 4,980.00 at a new merchant.", "confidence": 0.98, "observed_at": "2026-09-23T11:59:00Z", "graph_query": "get_transaction_context"}, {"evidence_id": "ev-002", "type": "device_link", "source": "tigergraph.detect_mule_rings", "summary": "The account shares a device with two connected accounts.", "confidence": 0.84, "observed_at": "2026-09-23T12:01:00Z", "graph_query": "detect_mule_rings"}],
+  "findings": [{"finding_id": "finding-001", "pattern": "shared_device_cluster", "assessment": "Possible coordinated account activity; customer validation is needed before blocking.", "confidence": 0.78, "supporting_evidence_ids": ["ev-001", "ev-002"]}],
+  "uncertainty": {"risk_score": 0.87, "confidence": 0.78, "enough_evidence_to_act": false, "missing_evidence": ["transaction_owner_validation", "device_cluster_context"]},
+  "decisions": [{"decision_id": "decision-001", "stage": "before_additional_evidence", "decision": "request_step_up_authentication", "rationale": "Risk is high but the shared device may have an innocent explanation.", "at": "2026-09-23T12:02:00Z"}],
+  "actions": [{"action_id": "action-001", "action": "request_step_up_authentication", "mode": "request_evidence", "status": "pending_approval", "approval_route": "fraud_analyst", "reason": "Resolve uncertainty before account blocking."}],
+  "approval": {"required": true, "route": "fraud_analyst", "status": "pending", "approved_by": null},
+  "memory": {"similar_cases": ["prior-case-017"], "retrieved_patterns": ["shared_device_cluster"], "outcome_to_store": null},
+  "graph_refs": {"queries_called": ["get_transaction_context", "detect_mule_rings", "find_prior_cases"], "entity_ids": {"accounts": ["acct-demo-001", "acct-demo-014"], "transactions": ["tx-demo-001"], "devices": ["dev-demo-007"]}},
+  "explanation": "The recommendation is to request step-up authentication because the transaction risk and device linkage are concerning, but the evidence is not yet sufficient for an irreversible block."
+}

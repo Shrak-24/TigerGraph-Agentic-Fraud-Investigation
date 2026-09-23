@@ -9,6 +9,10 @@ This repository contains the graph/data workstream for the TigerGraph Agentic Fr
 - `contracts/mcp-tool-contract.json` - machine-readable tool signatures for the agent/MCP integration.
 - `contracts/MCP_TOOL_CONTRACT.md` - human-readable contract with examples and stability rules.
 - `scripts/prepare_hhgoa.py` - converts the raw IEEE-CIS-style CSVs into the normalized CSVs consumed by the loading jobs.
+- `contracts/case-record.schema.json` - shared case-record contract for the agent and UI workstreams.
+- `fixtures/sample-case.json` - frontend/integration-safe sample case object.
+- `pipeline/run_benchmark.py` - dummy 20-case benchmark pipeline; replace its stub with the real agent call during integration.
+- `docs/TECHNICAL_BLOG_OUTLINE.md` and `docs/DEMO_VIDEO_STORYBOARD.md` - Person 3 content scaffolds.
 
 ## Prerequisites
 
