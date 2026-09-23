@@ -8,5 +8,6 @@ graph today and be wired to TigerGraph MCP later.
 from .agent import FraudInvestigationAgent
 from .graph_tools import GraphToolInterface, MockGraphTools
 from .memory import CaseMemory
+from .tigergraph_adapter import TigerGraphMCPGraphTools
 
-__all__ = ["CaseMemory", "FraudInvestigationAgent", "GraphToolInterface", "MockGraphTools"]
+__all__ = ["CaseMemory", "FraudInvestigationAgent", "GraphToolInterface", "MockGraphTools", "TigerGraphMCPGraphTools"]

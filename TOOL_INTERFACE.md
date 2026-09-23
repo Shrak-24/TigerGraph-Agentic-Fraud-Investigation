@@ -54,3 +54,23 @@ derived aggregate or an additional read-only query.
 The agent never sends arbitrary GSQL, credentials, or case writes through this
 interface. Consequential actions are recommendations with an approval route;
 the current implementation does not execute account or transaction controls.
+
+## Existing Person 1 contract compatibility
+
+`agent.tigergraph_adapter.TigerGraphMCPGraphTools` bridges the current
+low-level operations in `contracts/mcp-tool-contract.json` to this interface.
+It requires two small application-owned resolvers:
+
+```python
+TigerGraphMCPGraphTools(
+    invoke=mcp_call,
+    resolve_account_id=lambda customer_id: "acct-...",
+    resolve_transaction_ids=lambda customer_id, days: ["tx-..."],
+    pattern_catalog=known_patterns,
+)
+```
+
+This removes the previous mismatch: the agent remains customer-oriented while
+the MCP adapter handles account/transaction-keyed TigerGraph calls. The
+low-level contract currently has no account-baseline query, so the adapter
+returns a neutral baseline until that read-only query is added.
