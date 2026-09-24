@@ -63,7 +63,11 @@ def _extract_text(path: Path) -> str:
         from pypdf import PdfReader  # type: ignore
         return "\n".join(page.extract_text() or "" for page in PdfReader(str(path)).pages)
     except Exception:
-        return path.read_text(encoding="utf-8", errors="ignore")
+        try:
+            from pdfminer.high_level import extract_text  # type: ignore
+            return extract_text(str(path))
+        except Exception:
+            return path.read_text(encoding="utf-8", errors="ignore")
 
 
 def _policy_from_text(text: str, source: str) -> dict[str, Any]:

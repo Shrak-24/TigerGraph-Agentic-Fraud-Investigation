@@ -7,7 +7,7 @@ without making the agent know about GSQL query names or account resolution.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from typing import Any
 
 
@@ -80,3 +80,7 @@ class TigerGraphMCPGraphTools:
 
     def query_fraud_patterns(self) -> dict[str, Any]:
         return {"patterns": self.pattern_catalog}
+
+    def write_case(self, case: dict[str, Any]) -> dict[str, Any]:
+        """Write a case through the optional ``upsert_case_record`` MCP call."""
+        return self.invoke("upsert_case_record", {"case": case})

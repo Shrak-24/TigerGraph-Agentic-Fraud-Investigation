@@ -30,6 +30,9 @@ def query_fraud_patterns() -> dict:
     # {"patterns": [{"pattern_id": "...", "name": "...",
     #                 "indicators": [...], "typical_entities": [...],
     #                 "base_confidence": 0.0}]}
+
+def write_case(case: dict) -> dict:
+    # {"case_id": "...", "status": "written", "graph": "HHGOA_FRAUD"}
 ```
 
 ## Entity shapes
@@ -51,9 +54,11 @@ device/account overlap, `link_device_identity` feeds identity signals, and
 `find_prior_cases` feeds prior-case retrieval. Account behavior may be a
 derived aggregate or an additional read-only query.
 
-The agent never sends arbitrary GSQL, credentials, or case writes through this
-interface. Consequential actions are recommendations with an approval route;
-the current implementation does not execute account or transaction controls.
+The agent never sends arbitrary GSQL or credentials through this interface.
+`write_case` is the only graph write and receives a case already validated by
+`CASE_RECORD_SCHEMA.json`. Consequential fraud controls remain
+recommendations with an approval route; the current implementation does not
+execute account or transaction controls.
 
 ## Existing Person 1 contract compatibility
 

@@ -1,71 +1,56 @@
-# HHGOA Person 1 - Graph & Data
+# TRACE. — TigerGraph Agentic Fraud Investigation
 
-This repository contains the graph/data workstream for the TigerGraph Agentic Fraud Investigation challenge. It is intentionally independent of the agent and UI workstreams: the graph can be loaded and queried before either of those components is available.
+Integrated HHGOA hackathon project with a Python fraud-investigation agent,
+TigerGraph graph contracts, deterministic mock graph data, benchmark output,
+and a Streamlit analyst workbench.
 
-## Contents
+## Repository layout
 
-- `graph/schema.gsql` - TigerGraph vertex, edge, loading-job, and index definitions.
-- `graph/queries.gsql` - read-only investigation and pattern-detection queries.
-- `contracts/mcp-tool-contract.json` - machine-readable tool signatures for the agent/MCP integration.
-- `contracts/MCP_TOOL_CONTRACT.md` - human-readable contract with examples and stability rules.
-- `scripts/prepare_hhgoa.py` - converts the raw IEEE-CIS-style CSVs into the normalized CSVs consumed by the loading jobs.
-- `contracts/case-record.schema.json` - shared case-record contract for the agent and UI workstreams.
-- `fixtures/sample-case.json` - frontend/integration-safe sample case object.
-- `pipeline/run_benchmark.py` - dummy 20-case benchmark pipeline; replace its stub with the real agent call during integration.
-- `docs/TECHNICAL_BLOG_OUTLINE.md` and `docs/DEMO_VIDEO_STORYBOARD.md` - Person 3 content scaffolds.
-- `frontend/trace_fraud_ui/` - merged TRACE. Streamlit workbench and standalone HTML preview from the Desktop UI folder.
-- `agent/` - Person 2's evidence-first fraud investigation loop, mock graph tools, GraphRAG policy/pattern grounding, and case memory.
-- `TOOL_INTERFACE.md` and `CASE_RECORD_SCHEMA.json` - shared contracts for the agent, TigerGraph MCP adapter, and UI.
+- `Backend/agent/` — investigation loop, GraphRAG grounding, mock graph tools, TigerGraph adapter, case memory, SAR drafting, and graph case writes.
+- `Backend/graph/` — TigerGraph schema and GSQL investigation queries.
+- `Backend/contracts/` — MCP operation contract and compatibility case schema.
+- `Backend/pipeline/` — validated 20-case benchmark runner.
+- `Backend/scripts/` — HHGOA dataset preparation utilities.
+- `frontend/trace_fraud_ui/` — Streamlit UI connected to the live agent session.
+- `CASE_RECORD_SCHEMA.json` — canonical agent/UI output contract.
+- `TOOL_INTERFACE.md` — agent ↔ TigerGraph adapter contract.
+- `docs/` — demo storyboard and technical blog outline.
 
-## Local agent smoke test
+## Run the integrated website
 
-The agent currently runs without TigerGraph credentials using deterministic mock data:
-
-```powershell
-python -m agent.demo
-```
-
-Use `FraudInvestigationAgent(graph_tools=<Person 1 adapter>)` to replace the mock layer. The optional `policy_path` can point to the supplied `fraud_policy.pdf`; the loader uses `pypdf` when available. The local JSON policy and five-pattern catalog are explicit demo fallbacks because those source artifacts are not present in this checkout.
-
-## Local UI
-
-For the standalone preview, open `frontend/trace_fraud_ui/ui_preview.html` directly in a browser. For the interactive Streamlit workbench:
+From the repository root:
 
 ```powershell
-cd frontend/trace_fraud_ui
-py -m pip install -r requirements.txt
-py -m streamlit run app.py
+python -m streamlit run frontend/trace_fraud_ui/app.py --server.headless true --server.port 8501
 ```
 
-It runs at `http://localhost:8501` and currently uses synthetic benchmark data. The UI is intentionally kept separate from the graph backend until the MCP and case-record integration is connected.
+Open `http://127.0.0.1:8501`. The UI starts with a mock high-risk case and
+allows new fraud-signal, customer-report, and analyst-request investigations.
 
-## Prerequisites
+## Run the benchmark flow
 
-1. Obtain the HHGOA_IEEE dataset and read its bundled README first. The README is authoritative for filenames, column names, and the benchmark split.
-2. Run TigerGraph Savanna or Community Edition and obtain an API token.
-3. Put the raw CSV files in a local input directory. This workstream does not commit the dataset.
-
-## Load flow
+The following creates 20 deterministic cases, validates every case against the
+canonical schema, writes one answer file per case, records mock graph-write
+status, and creates a manifest:
 
 ```powershell
-$py = "C:\Users\<you>\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
-& $py scripts/prepare_hhgoa.py --input-dir .\data\raw --output-dir .\data\normalized
+python Backend/pipeline/run_benchmark.py
 ```
 
-Upload the generated `data/normalized/*.csv` files to TigerGraph, then run `graph/schema.gsql` in GSQL and execute the loading jobs it defines. The script tolerates missing optional device/identity/case files and preserves unknown source columns in the transaction `raw_features` JSON field.
+To use real benchmark triggers, pass a JSON array or `{ "triggers": [...] }`:
 
-Example GSQL deployment sequence:
-
-```gsql
-RUN QUERY install_query("get_transaction_context")
-RUN QUERY install_query("find_connected_accounts")
-RUN QUERY install_query("detect_mule_rings")
-RUN QUERY install_query("link_device_identity")
-RUN QUERY install_query("find_prior_cases")
+```powershell
+python Backend/pipeline/run_benchmark.py --triggers-file .\data\benchmark_triggers.json
 ```
 
-The exact `CREATE LOADING JOB` run command depends on whether the files are uploaded to a Savanna file store or mounted in CE. The job names and input filenames are stable; only the file URI needs to be changed for the environment.
+## TigerGraph integration
 
-## What is and is not complete
+The mock graph layer is the default. Replace it with
+`TigerGraphMCPGraphTools` and provide `invoke`, account resolution, and
+transaction resolution callbacks. The adapter maps the bounded read queries
+and the controlled `upsert_case_record` write described in
+`Backend/contracts/mcp-tool-contract.json`.
 
-The schema, normalized-file contract, GSQL queries, and MCP interface are implemented. A live import cannot be completed from this checkout because no HHGOA dataset, TigerGraph endpoint, or credentials were supplied. After those are available, run the loader, execute the loading jobs, and smoke-test the five MCP operations in the contract.
+The repository does not include HHGOA data, a TigerGraph endpoint, or
+credentials. The benchmark and UI therefore remain runnable offline while the
+integration seam is ready for the real dataset and MCP server.

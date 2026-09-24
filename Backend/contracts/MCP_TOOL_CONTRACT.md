@@ -1,13 +1,13 @@
 # TigerGraph MCP tool contract
 
-Version `1.0.0` is the integration boundary between the graph workstream and the agent. The agent calls the five operations in `mcp-tool-contract.json`; the MCP adapter maps each operation to the same-named installed GSQL query on graph `HHGOA_FRAUD`.
+Version `1.1.0` is the integration boundary between the graph workstream and the agent. The agent calls five read operations plus `upsert_case_record`; the MCP adapter maps the read operations to installed GSQL queries on graph `HHGOA_FRAUD` and validates case writes against `CASE_RECORD_SCHEMA.json`.
 
 ## Stable behavior
 
 - Inputs are JSON objects. IDs are opaque strings; the adapter must not coerce leading zeros.
 - Outputs are JSON objects with the named arrays, even when no matches exist.
 - Results should include only the fields listed in the contract entities section plus query-specific arrays.
-- The graph is read-only through these operations. Case writes are intentionally reserved for the later case-record integration.
+- Investigation reads are bounded and read-only. `upsert_case_record` is the controlled write operation required to persist the final `PriorCase` vertex and its `IN_CASE`/`TRANSACTION_IN_CASE` relationships.
 - Invalid IDs return an empty result with `NOT_FOUND` only when the adapter can distinguish absence from a valid zero-match traversal.
 - Enforce the documented bounds for hop counts and limits to prevent accidental graph-wide traversals.
 
@@ -31,3 +31,4 @@ Response:
 2. Call each operation with a syntactically valid unknown ID and confirm a stable empty-array response.
 3. Confirm max-hop and limit bounds are rejected with `INVALID_ARGUMENT`.
 4. Confirm the MCP adapter does not expose credentials, raw query text, or unbounded arbitrary GSQL execution.
+5. Write a validated sample case and confirm the returned case ID, status, and graph name.

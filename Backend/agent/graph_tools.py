@@ -26,6 +26,8 @@ class GraphToolInterface(Protocol):
 
     def query_fraud_patterns(self) -> dict[str, Any]: ...
 
+    def write_case(self, case: dict[str, Any]) -> dict[str, Any]: ...
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -37,6 +39,7 @@ class MockGraphTools:
     def __init__(self, clock: Callable[[], datetime] | None = None) -> None:
         self._clock = clock or _now
         self._patterns = _default_patterns()
+        self.written_cases: dict[str, dict[str, Any]] = {}
         self._case_fixtures = [
             {
                 "case_id": "prior-case-017",
@@ -161,6 +164,12 @@ class MockGraphTools:
 
     def query_fraud_patterns(self) -> dict[str, Any]:
         return {"patterns": self._patterns}
+
+    def write_case(self, case: dict[str, Any]) -> dict[str, Any]:
+        """Simulate the PriorCase vertex/edge write required by the demo."""
+        case_id = case["case_id"]
+        self.written_cases[case_id] = case
+        return {"case_id": case_id, "status": "written", "graph": "HHGOA_FRAUD"}
 
     def _tx(self, tx_id: str, customer_id: str, timestamp: datetime, amount: float, merchant: str, device_id: str, risk_score: float) -> dict[str, Any]:
         return {"transaction_id": tx_id, "customer_id": customer_id, "amount": amount, "currency": "INR", "merchant": merchant, "timestamp": timestamp, "risk_score": risk_score, "device_id": device_id, "country": "IN"}

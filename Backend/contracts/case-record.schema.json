@@ -10,7 +10,7 @@
     "status": {"enum": ["open", "needs_evidence", "escalated", "resolved", "closed"]},
     "created_at": {"type": "string"},
     "updated_at": {"type": "string"},
-    "trigger": {"type": "object", "required": ["type", "source", "received_at"], "properties": {"type": {"type": "string"}, "source": {"type": "string"}, "received_at": {"type": "string"}, "risk_score": {"type": "number"}, "transaction_ids": {"type": "array", "items": {"type": "string"}}}},
+    "trigger": {"type": "object", "required": ["type", "source", "received_at"], "properties": {"type": {"type": "string"}, "source": {"type": "string"}, "received_at": {"type": "string"}, "risk_score": {"type": "number"}, "transaction_id": {"type": "string"}, "transaction_ids": {"type": "array", "items": {"type": "string"}}, "customer_id": {"type": "string"}, "analyst_id": {"type": "string"}, "description": {"type": "string"}}},
     "subject": {"type": "object", "required": ["account_id"], "properties": {"account_id": {"type": "string"}, "customer_id": {"type": "string"}, "country": {"type": "string"}}},
     "evidence": {"type": "array", "items": {"type": "object", "required": ["evidence_id", "type", "source", "summary", "confidence"], "properties": {"evidence_id": {"type": "string"}, "type": {"type": "string"}, "source": {"type": "string"}, "summary": {"type": "string"}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}, "observed_at": {"type": "string"}, "graph_query": {"type": ["string", "null"]}}}},
     "findings": {"type": "array", "items": {"type": "object", "required": ["finding_id", "pattern", "assessment", "confidence"], "properties": {"finding_id": {"type": "string"}, "pattern": {"type": "string"}, "assessment": {"type": "string"}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}, "supporting_evidence_ids": {"type": "array", "items": {"type": "string"}}}}},
@@ -19,7 +19,9 @@
     "actions": {"type": "array", "items": {"type": "object", "required": ["action_id", "action", "mode", "status", "approval_route"], "properties": {"action_id": {"type": "string"}, "action": {"type": "string"}, "mode": {"enum": ["recommend", "execute", "request_evidence"]}, "status": {"enum": ["proposed", "pending_approval", "approved", "executed", "rejected"]}, "approval_route": {"type": "string"}, "reason": {"type": "string"}}}},
     "approval": {"type": "object", "required": ["required", "route", "status"], "properties": {"required": {"type": "boolean"}, "route": {"type": "string"}, "status": {"enum": ["not_required", "pending", "approved", "rejected"]}, "approved_by": {"type": ["string", "null"]}}},
     "memory": {"type": "object", "required": ["similar_cases", "retrieved_patterns"], "properties": {"similar_cases": {"type": "array", "items": {"type": "string"}}, "retrieved_patterns": {"type": "array", "items": {"type": "string"}}, "outcome_to_store": {"type": ["string", "null"]}}},
-    "graph_refs": {"type": "object", "required": ["queries_called", "entity_ids"], "properties": {"queries_called": {"type": "array", "items": {"type": "string"}}, "entity_ids": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}}}},
+    "graph_refs": {"type": "object", "required": ["queries_called", "entity_ids"], "properties": {"queries_called": {"type": "array", "items": {"type": "string"}}, "entity_ids": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}}, "case_write": {"type": "object"}}},
+    "policy_context": {"type": "object"},
+    "sar": {"type": "object", "required": ["required", "status", "reason"], "properties": {"required": {"type": "boolean"}, "status": {"enum": ["not_required", "draft", "pending_approval", "filed"]}, "reason": {"type": "string"}, "report": {"type": ["string", "null"]}}},
     "explanation": {"type": "string"}
   }
 }

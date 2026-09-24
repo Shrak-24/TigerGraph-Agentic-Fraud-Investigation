@@ -16,7 +16,7 @@ from .memory import CaseMemory
 class FraudInvestigationAgent:
     """Run trigger -> investigate -> assess -> act -> explain -> memory."""
 
-    def __init__(self, graph_tools: GraphToolInterface | None = None, memory: CaseMemory | None = None, policy_path: str | None = None, patterns_path: str | None = None, evidence_wait_seconds: float = .02, evidence_provider: Callable[[dict[str, Any], str], dict[str, Any]] | None = None) -> None:
+    def __init__(self, graph_tools: GraphToolInterface | None = None, memory: CaseMemory | None = None, policy_path: str | None = None, patterns_path: str | None = None, evidence_wait_seconds: float = .02, evidence_provider: Callable[[dict[str, Any], str], dict[str, Any]] | None = None, max_evidence_rounds: int = 2) -> None:
         self.graph = graph_tools or MockGraphTools()
         self.memory = memory or CaseMemory()
         package_data = Path(__file__).parent / "data"
@@ -25,6 +25,7 @@ class FraudInvestigationAgent:
         self.patterns = load_fraud_patterns(patterns_path or package_data / "5_known_fraud_patterns.json", fallback=graph_patterns)
         self.evidence_wait_seconds = evidence_wait_seconds
         self.evidence_provider = evidence_provider
+        self.max_evidence_rounds = max(0, max_evidence_rounds)
 
     def investigate(self, trigger: dict[str, Any]) -> dict[str, Any]:
         normalized = self._validate_trigger(trigger)
@@ -59,14 +60,7 @@ class FraudInvestigationAgent:
         self._record_uncertainty(case, "initial", confidence, contributions)
 
         if confidence < .8:
-            action = self._next_evidence_action(indicators)
-            case["actions"].append({"action_id": f"action-{uuid.uuid4().hex[:8]}", "action": action, "mode": "request_evidence", "status": "pending_approval", "approval_route": "fraud_analyst", "reason": "Additional controlled evidence is needed before a consequential action."})
-            case["decisions"].append(self._decision("request_more_evidence", "Risk signals are corroborated but uncertainty remains; request controlled validation."))
-            case["approval"] = {"required": True, "route": "fraud_analyst", "status": "pending", "approved_by": None}
-            follow_up = self._gather_evidence(case, action, normalized)
-            evidence.append(follow_up)
-            confidence = min(.99, confidence + .15)
-            self._record_uncertainty(case, "after_controlled_evidence", confidence, ["controlled_validation_completed"])
+            confidence = self._gather_more_evidence(case, normalized, indicators, confidence)
 
         case["uncertainty"]["confidence"] = round(confidence, 2)
         case["uncertainty"]["risk_score"] = normalized.get("risk_score", self._risk_from_transactions(transactions))
@@ -76,6 +70,7 @@ class FraudInvestigationAgent:
         case["updated_at"] = self._now().isoformat()
         case["memory"]["outcome_to_store"] = self._memory_outcome(case)
         case["explanation"] = self._explain(case, matches, contributions)
+        self._write_case(case)
         self.memory.store(case)
         return case
 
@@ -91,7 +86,10 @@ class FraudInvestigationAgent:
         received_at = trigger.get("received_at", self._now())
         if isinstance(received_at, datetime):
             received_at = received_at.isoformat()
-        return {**trigger, "source": trigger.get("source", trigger["type"]), "received_at": received_at}
+        normalized = {**trigger, "source": trigger.get("source", trigger["type"]), "received_at": received_at}
+        if normalized["type"] == "fraud_signal":
+            normalized["transaction_ids"] = trigger.get("transaction_ids", [trigger["transaction_id"]])
+        return normalized
 
     def _new_case(self, case_id: str, trigger: dict[str, Any], now: datetime, existing: dict[str, Any] | None) -> dict[str, Any]:
         if existing:
@@ -102,7 +100,7 @@ class FraudInvestigationAgent:
             "trigger": trigger, "subject": {"account_id": f"acct-{trigger['customer_id'].removeprefix('cust-')}", "customer_id": trigger["customer_id"]}, "evidence": [], "findings": [],
             "uncertainty": {"risk_score": trigger.get("risk_score", 0), "confidence": .1, "enough_evidence_to_act": False, "missing_evidence": [], "assessment_history": []},
             "decisions": [], "actions": [], "approval": {"required": False, "route": "none", "status": "not_required", "approved_by": None}, "memory": {"similar_cases": [], "retrieved_patterns": [], "outcome_to_store": None},
-            "graph_refs": {"queries_called": [], "entity_ids": {"accounts": [], "transactions": [], "devices": [], "identities": []}}, "explanation": "",
+            "graph_refs": {"queries_called": [], "entity_ids": {"accounts": [], "transactions": [], "devices": [], "identities": []}}, "policy_context": self._policy_context(trigger.get("risk_score", 0)), "sar": {"required": False, "status": "not_required", "reason": "SAR threshold not evaluated yet.", "report": None}, "explanation": "",
         }
 
     def _call(self, name: str, operation: Callable[[], dict[str, Any]], queries: list[str]) -> dict[str, Any]:
@@ -156,18 +154,42 @@ class FraudInvestigationAgent:
         actions = [("block_transaction" if high_risk else "monitor_account", "Consequential action remains analyst-controlled after corroborating evidence.")]
         if not high_risk:
             actions.append(("warn_customer", "Customer notification is appropriate while the case remains under review."))
-        if risk >= self.policy["sar_rules"].get("minimum_risk_score", .9) and matches:
+        sar_required = self._sar_required(risk, matches, evidence)
+        if sar_required:
             actions.append(("file_sar", "Risk and pattern evidence meet the configured SAR review threshold."))
+            case["sar"] = {"required": True, "status": "pending_approval", "reason": "Risk threshold and corroborating evidence satisfy the configured SAR rule.", "report": self._build_sar(case, matches)}
+        else:
+            case["sar"] = {"required": False, "status": "not_required", "reason": "Risk threshold or required evidence was not met.", "report": None}
         for action, reason in actions:
             case["actions"].append({"action_id": f"action-{uuid.uuid4().hex[:8]}", "action": action, "mode": "recommend", "status": "pending_approval", "approval_route": "fraud_analyst", "reason": reason})
         case["approval"] = {"required": True, "route": "fraud_analyst", "status": "pending", "approved_by": None}
         case["decisions"].append(self._decision("recommend_controlled_action", f"Confidence {confidence:.2f} is sufficient to recommend controlled action; approval is required by policy."))
 
-    def _gather_evidence(self, case: dict[str, Any], action: str, trigger: dict[str, Any]) -> dict[str, Any]:
+    def _gather_evidence(self, case: dict[str, Any], action: str, trigger: dict[str, Any]) -> tuple[dict[str, Any], float]:
         if self.evidence_wait_seconds:
             time.sleep(self.evidence_wait_seconds)
         result = self.evidence_provider(case, action) if self.evidence_provider else {"summary": f"Simulated {action} completed successfully for controlled validation.", "type": "customer_validation"}
-        return self._evidence(result.get("type", "customer_validation"), "controlled_action", result.get("summary", "Controlled evidence returned."), .94, None)
+        delta = max(0.0, min(.3, float(result.get("confidence_delta", .15))))
+        return self._evidence(result.get("type", "customer_validation"), "controlled_action", result.get("summary", "Controlled evidence returned."), .94, None), delta
+
+    def _gather_more_evidence(self, case: dict[str, Any], trigger: dict[str, Any], indicators: list[str], confidence: float) -> float:
+        """Run bounded controlled-evidence rounds until confidence is actionable."""
+        for round_number in range(self.max_evidence_rounds):
+            if confidence >= .8:
+                break
+            action_name = self._next_evidence_action(indicators, round_number)
+            action = {"action_id": f"action-{uuid.uuid4().hex[:8]}", "action": action_name, "mode": "request_evidence", "status": "pending_approval", "approval_route": "fraud_analyst", "reason": "Additional controlled evidence is needed before a consequential action.", "round": round_number + 1}
+            case["actions"].append(action)
+            case["decisions"].append(self._decision("request_more_evidence", f"Round {round_number + 1}: uncertainty remains at {confidence:.2f}; request controlled validation.", "before_additional_evidence"))
+            case["approval"] = {"required": True, "route": "fraud_analyst", "status": "approved", "approved_by": "simulated_policy_gate"}
+            action["status"] = "approved"
+            follow_up, delta = self._gather_evidence(case, action_name, trigger)
+            case["evidence"].append(follow_up)
+            action["status"] = "executed"
+            confidence = min(.99, confidence + delta)
+            self._record_uncertainty(case, "after_controlled_evidence", confidence, [f"controlled_validation_completed:{action_name}"])
+            case["decisions"].append(self._decision("reassess_after_evidence", f"Controlled evidence completed; confidence updated to {confidence:.2f}.", "after_additional_evidence"))
+        return confidence
 
     def _indicators(self, trigger: dict[str, Any], transactions: dict[str, Any], connected: dict[str, Any], devices: dict[str, Any], behavior: dict[str, Any]) -> list[str]:
         indicators = []
@@ -188,7 +210,10 @@ class FraudInvestigationAgent:
 
     def _entity_refs(self, case: dict[str, Any], transactions: dict[str, Any], connected: dict[str, Any], devices: dict[str, Any]) -> None:
         refs = case["graph_refs"]["entity_ids"]
-        refs["transactions"] = sorted({tx.get("transaction_id") for tx in transactions.get("transactions", []) if tx.get("transaction_id")})
+        trigger_ids = set(case.get("trigger", {}).get("transaction_ids", []))
+        if case.get("trigger", {}).get("transaction_id"):
+            trigger_ids.add(case["trigger"]["transaction_id"])
+        refs["transactions"] = sorted({tx.get("transaction_id") for tx in transactions.get("transactions", []) if tx.get("transaction_id")} | trigger_ids)
         refs["accounts"] = sorted({account.get("account_id") for account in connected.get("accounts", []) if account.get("account_id")})
         refs["devices"] = sorted({device.get("device_id") for device in devices.get("devices", []) if device.get("device_id")})
         refs["identities"] = sorted(set(connected.get("identities", [])))
@@ -196,13 +221,45 @@ class FraudInvestigationAgent:
     def _evidence(self, type_: str, source: str, summary: str, confidence: float, graph_query: str | None) -> dict[str, Any]:
         return {"evidence_id": f"ev-{uuid.uuid4().hex[:8]}", "type": type_, "source": source, "summary": summary, "confidence": confidence, "observed_at": self._now().isoformat(), "graph_query": graph_query}
 
-    def _decision(self, decision: str, rationale: str) -> dict[str, Any]:
-        return {"decision_id": f"decision-{uuid.uuid4().hex[:8]}", "stage": "agent_loop", "decision": decision, "rationale": rationale, "at": self._now().isoformat()}
+    def _decision(self, decision: str, rationale: str, stage: str = "agent_loop") -> dict[str, Any]:
+        return {"decision_id": f"decision-{uuid.uuid4().hex[:8]}", "stage": stage, "decision": decision, "rationale": rationale, "at": self._now().isoformat()}
 
-    def _next_evidence_action(self, indicators: list[str]) -> str:
+    def _next_evidence_action(self, indicators: list[str], round_number: int = 0) -> str:
+        if round_number > 0:
+            return "request_customer_validation" if "customer_dispute" not in indicators else "request_analyst_validation"
         if "new_device" in indicators or "shared_device" in indicators:
             return "request_step_up_authentication"
         return "request_customer_validation"
+
+    def _policy_context(self, risk_score: float) -> dict[str, Any]:
+        risk = float(risk_score or 0)
+        band = "high" if risk >= .8 else "medium" if risk >= .5 else "low"
+        return {"source": self.policy.get("source"), "risk_band": band, "transaction_limit": self.policy.get("transaction_limits_by_risk", {}).get(band), "approval_thresholds": self.policy.get("approval_thresholds", {}), "sar_rules": self.policy.get("sar_rules", {})}
+
+    def _sar_required(self, risk: float, matches: list[dict[str, Any]], evidence: list[dict[str, Any]]) -> bool:
+        rules = self.policy.get("sar_rules", {})
+        evidence_types = {item.get("type") for item in evidence}
+        has_transaction = "transaction" in evidence_types
+        has_identity = bool(evidence_types.intersection({"device_signal", "connected_account", "customer_validation"}))
+        evidence_ok = has_transaction and has_identity if rules.get("requires_transaction_and_identity_evidence", True) else bool(evidence)
+        threshold = max(float(rules.get("minimum_risk_score", .9)), float(self.policy.get("approval_thresholds", {}).get("sar", .9)))
+        return float(risk) >= threshold and bool(matches) and evidence_ok
+
+    def _build_sar(self, case: dict[str, Any], matches: list[dict[str, Any]]) -> str:
+        transaction_ids = case.get("graph_refs", {}).get("entity_ids", {}).get("transactions", [])
+        pattern_names = ", ".join(item.get("pattern", "unknown") for item in case.get("findings", [])[:3]) or "suspected fraud"
+        return f"SAR DRAFT | Case {case['case_id']} | Subject {case['subject'].get('customer_id', 'unknown')} | Transactions: {', '.join(transaction_ids) or 'not available'} | Patterns: {pattern_names} | Evidence: {len(case.get('evidence', []))} items | Analyst approval required before filing."
+
+    def _write_case(self, case: dict[str, Any]) -> None:
+        writer = getattr(self.graph, "write_case", None)
+        case["graph_refs"]["queries_called"].append("upsert_case_record")
+        if not writer:
+            case["graph_refs"]["case_write"] = {"status": "not_supported", "reason": "Graph adapter has no case-write operation."}
+            return
+        try:
+            case["graph_refs"]["case_write"] = writer(case)
+        except Exception as exc:
+            case["graph_refs"]["case_write"] = {"status": "failed", "error": str(exc)}
 
     def _missing_evidence(self, indicators: list[str]) -> list[str]:
         missing = ["transaction_owner_validation"]
